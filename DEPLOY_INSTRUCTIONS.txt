@@ -1,0 +1,63 @@
+====================================================================
+BACKEND V413 - RENDER DEPLOYMENT FIX
+====================================================================
+
+修復問題：
+Render 部署超時問題 - 服務器無法通過 Render 的健康檢查
+
+修復內容：
+1. 添加健康檢查路由：GET / 和 GET /health
+2. 服務器現在綁定到 '0.0.0.0'（Render 要求）
+3. 添加詳細的啟動日誌
+
+====================================================================
+部署步驟：
+====================================================================
+
+1. 上傳文件到 GitHub
+   - 打開 https://github.com/erickwok1020us/mundo-cleaver-socket-server
+   - 將以下文件上傳並替換現有文件：
+     * server.js
+     * VERSION
+     * gameEngine.js (如果有更改)
+     * package.json (如果有更改)
+
+2. 等待 Render 自動部署
+   - Render 會自動檢測到 GitHub 的更改
+   - 等待部署完成（應該不會再超時）
+
+3. 驗證部署成功
+   - 在 Render 日誌中查看：
+     "Socket.io server running on port XXXX"
+     "Health check available at http://0.0.0.0:XXXX/health"
+   - 訪問您的 Render URL（例如：https://mundo-cleaver-socket-server.onrender.com）
+   - 應該看到："Mundo Cleaver Socket Server is running"
+
+4. 測試前端連接
+   - 前端 V415 已經準備好
+   - 後端修復後，前端應該能夠正常連接
+   - 測試創建房間和選擇隊伍功能
+
+====================================================================
+技術細節：
+====================================================================
+
+修改的代碼：
+
+1. server.js 第 10-16 行（新增）：
+   app.get('/', (req, res) => {
+       res.send('Mundo Cleaver Socket Server is running');
+   });
+   
+   app.get('/health', (req, res) => {
+       res.json({ status: 'ok', timestamp: new Date().toISOString() });
+   });
+
+2. server.js 第 372-376 行（修改）：
+   const PORT = Number(process.env.PORT) || 3000;
+   server.listen(PORT, '0.0.0.0', () => {
+       console.log(`Socket.io server running on port ${PORT}`);
+       console.log(`Health check available at http://0.0.0.0:${PORT}/health`);
+   });
+
+====================================================================

@@ -1,0 +1,139 @@
+V428-All-Modes-Safe
+
+Release Date: 2025-01-30
+
+HIGH-PERFORMANCE MODE: 125 Hz Physics + 60 Hz Network (ALL MODES) + AUTO-PROTECTION
+
+Changes (Server-Side Only - NO GAME CONTENT MODIFIED):
+1. ALL Modes: 125 Hz physics tick rate (matches client fixedDt = 0.008s)
+2. ALL Modes: 60 Hz network broadcast rate (matches client 60 FPS rendering)
+3. Precise hrtime-based game loop (nanosecond resolution, eliminates drift)
+4. Separate schedulers for physics ticks and network broadcasts
+5. AUTO-DEGRADATION PROTECTION:
+   - Event loop monitoring (p50/p95/p99 delay, ELU utilization)
+   - Auto-degrade network to 30 Hz when overloaded (p95 > 8ms or ELU > 90%)
+   - Auto-recover to 60 Hz when stable (p95 < 6ms and ELU < 70%)
+   - Hysteresis: 3 consecutive overload checks to degrade, 5 to recover
+   - Physics ALWAYS stays at 125 Hz (never changes - no gameplay impact)
+6. COMPREHENSIVE MONITORING:
+   - Per-phase timing: movement, knives, collision, broadcast (microseconds)
+   - Collision test counting: tracks O(K×n) pressure
+   - Network bytes per second (sampled)
+   - Players (P), active knives (K), collision tests per second
+   - Event loop p95 delay and utilization percentage
+   - Current network rate (60 Hz or 30 Hz degraded)
+7. Catch-up mechanism with safety cap to prevent spiral-of-death after GC pauses
+8. Applies to 1v1, 3v3, and all other game modes
+
+Game Constants (UNCHANGED):
+- PLAYER_SPEED: 23.4 units/second
+- KNIFE_SPEED: 4.5864 units/second
+- COLLISION_RADIUS: 7.35
+- All game logic, movement, collision detection: UNCHANGED
+
+Technical Implementation:
+- Uses process.hrtime.bigint() for nanosecond-precision timing
+- Fixed-step physics: dt = 1/125 for 1v1, dt = 1/60 for others
+- Catch-up loop with maxCatchUpTicks = 8 to handle GC pauses
+- Clamp mechanism: if behind by >8 ticks, skip forward to prevent spiral
+- setTimeout + setImmediate combo for precise sub-millisecond scheduling
+- Monitoring logs every 5 seconds: Ticks/sec, Broadcasts/sec, AvgCatchUp, Clamps
+
+Previous Version (V427):
+- Comprehensive team type normalization at all 9 entry points
+- Network accumulator fix for stable 30 Hz broadcasts
+- All emit() calls normalize team to Number()
+
+Previous Version (V426):
+- Team normalization at key entry points
+- Network accumulator fix
+- Increased NETWORK_UPDATE_RATE to 30 Hz
+
+Fixed knife collision failures and improved physics stability.
+
+Root Causes:
+- Discrete collision detection caused tunneling (knives skipping over players during dt spikes)
+- Variable dt caused inconsistent physics simulation and collision misses
+- GC pauses or event loop stalls would cause large dt values
+
+Changes:
+- Implemented swept collision detection using line-circle intersection
+- Knives now check entire path between frames, not just current position
+- Prevents tunneling even during lag spikes or high knife speeds
+- Fixed timestep physics: always simulate at 1/60s regardless of actual dt
+- Caps dt at 0.1s to prevent huge steps during stalls
+- Stable, predictable physics simulation that matches client expectations
+
+Technical Details:
+- Server dt is in seconds: (now - lastUpdateTime) / 1000
+- Server moveDistance = PLAYER_SPEED * dt = 23.4 * dt
+- Client moveSpeed = 0.39 units/frame (no dt scaling)
+- At 60 FPS: 0.39 × 60 = 23.4 units/second
+- Speeds now match, eliminating the 9.36x mismatch
+
+Previous Fixes (V422):
+- Added targetX/targetZ to broadcastGameState for movement synchronization
+- Added 100ms grace window to prevent stale server updates overwriting fresh clicks
+- Added team type coercion with Number()
+- Removed self.isMoving overwrite from server
+
+Previous Fixes (V419):
+- Fixed spawn position bug (team type coercion with Number())
+- Fixed latency regression (removed high-frequency logs)
+- Spawn positions: Team 1 at (-30, 0), Team 2 at (30, 0)
+
+Previous Fixes (V417):
+
+Changes:
+- Added real delta time calculation in tick() function
+- Changed updatePlayerMovement(dt) to use actual elapsed time instead of fixed interval
+- Changed updateKnives(dt) to use actual elapsed time
+- Added dt clamping (max 0.1s) to prevent huge jumps after pauses
+- Added time-based network update accumulator (replaces tick counter)
+- Added per-second logging: ticks/sec and broadcasts/sec for monitoring
+- Movement now uses: moveDistance = PLAYER_SPEED * dt (where dt is in seconds)
+
+Technical Details:
+- PLAYER_SPEED remains 2.5 units/second
+- dt is calculated as: (now - lastUpdateTime) / 1000 and clamped to max 0.1s
+- Network updates accumulate time and broadcast when >= 1/20 seconds (50ms)
+- Server logs actual tick rate and broadcast rate every second for monitoring
+
+Previous Fixes (V416):
+
+Issue 1: Render Deployment Timeout
+Root Cause:
+- Server was not binding to '0.0.0.0' (required for Render's external health checks)
+- Missing health check endpoint for Render to probe
+
+Changes:
+- Added health check routes: GET / and GET /health
+- Server now binds to '0.0.0.0' explicitly
+- Added detailed startup logging showing PORT and host
+
+Issue 2: Team Selection Blocked in 1v1 Mode
+Root Cause:
+- teamSelect handler blocked ALL team selection in 1v1 mode
+- Should only block team SWITCHING, not initial selection
+
+Changes:
+- Fixed teamSelect handler to check if player is already in a team
+- Only blocks switching after player is assigned (allows first-time selection)
+- Added comprehensive debugging logs with [TEAM-SELECT-SERVER] prefix
+- Added team capacity validation (1v1: 1 per team, 3v3: 3 per team)
+
+Issue 3: Host Disconnect Not Handled
+Root Cause:
+- When host disconnected, room remained open with guests stuck inside
+- No cleanup or notification to remaining players
+
+Changes:
+- Added host disconnect detection in disconnect handler
+- When host disconnects, emit hostDisconnected event to all players
+- Immediately close room and clean up game engine
+- Added [DISCONNECT] logging for debugging
+
+Previous Version (V410):
+- Server-Authoritative Architecture Implementation
+- 60Hz server game loop with 20Hz network updates
+- Client-side prediction with server reconciliation

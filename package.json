@@ -1,0 +1,17 @@
+{
+  "name": "mundo-cleaver-server",
+  "version": "1.0.0",
+  "description": "Socket.io server for Mundo Cleaver multiplayer game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "redis": "^5.9.0",
+    "socket.io": "^4.7.2",
+    "socket.io-client": "^4.8.1"
+  }
+}

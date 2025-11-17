@@ -1,0 +1,55 @@
+V410 Backend Changes - Apply Instructions
+==========================================
+
+This package contains only the files that changed for V410.
+
+FILES TO UPLOAD/REPLACE:
+------------------------
+
+1. server.js (REPLACE)
+   - Location: Repository root
+   - Action: Replace the existing server.js file
+   - Changes: Added Phase 3 Movement Authority event handler
+
+2. gameEngine.js (NEW FILE)
+   - Location: Repository root
+   - Action: Add this new file to repository root
+   - Changes: New server-authoritative game engine with Phase 1, 2, 3 implementation
+
+3. VERSION (NEW FILE)
+   - Location: Repository root
+   - Action: Add this new file to repository root
+   - Changes: Version tracking file for V410
+
+4. .gitignore (REPLACE)
+   - Location: Repository root
+   - Action: Replace the existing .gitignore file
+   - Changes: Updated ignore patterns
+
+HOW TO UPLOAD TO GITHUB:
+-------------------------
+
+Option 1: GitHub Web UI
+- Go to your repository on GitHub
+- Click "Add file" → "Upload files"
+- Drag and drop all 4 files from this ZIP
+- Commit with message: "V410: Server-Authoritative Architecture (Phase 1, 2, 3)"
+
+Option 2: Git Command Line
+- Extract these files to your local repository
+- git add server.js gameEngine.js VERSION .gitignore
+- git commit -m "V410: Server-Authoritative Architecture (Phase 1, 2, 3)"
+- git push
+
+DEPLOYMENT:
+-----------
+After uploading to GitHub:
+- Render will automatically redeploy (if auto-deploy is enabled)
+- Or manually trigger deploy on Render dashboard
+
+TESTING:
+--------
+After deployment, test that:
+- Server starts successfully on port 3000
+- Game loop runs at 60Hz
+- Network updates broadcast at 20Hz
